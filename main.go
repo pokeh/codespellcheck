@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 func main() {
@@ -19,7 +21,6 @@ func main() {
 	file, err := os.Open(path)
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 	defer file.Close()
 
@@ -28,12 +29,15 @@ func main() {
 
 	for scanner.Scan() {
 		text := scanner.Text()
-		for _, word := range splitWords(text) {
-			word, err = removeNonAlphabets(word)
-			if err != nil {
-				log.Fatal(err)
-				return
-			}
+		text, err = removeNonAlphabets(text)
+		if err != nil {
+			log.Fatal(err)
+		}
+		words, err := splitWords(text)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, word := range words {
 			// skip shorter words to avoid abbreviations
 			if len(word) < 5 {
 				continue
@@ -47,33 +51,53 @@ func main() {
 }
 
 func isFile(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return !fileInfo.IsDir()
 }
 
-func splitWords(src string) []string {
+func splitWords(src string) ([]string, error) {
 	if strings.Contains(src, "_") {
-		return splitByUnderscore(src)
+		return splitByUnderscore(src), nil
 	} else {
-		return splitByCapitals(src)
+		text, err := splitByCapitals(src)
+		if err != nil {
+			return nil, err
+		}
+		return text, nil
 	}
 }
 
-// eg. something_in_snake_case -> [something, in, snake, case]
-// eg. SOMETHING_IN_CAPITALS -> [something, in, capitals]
 func splitByUnderscore(src string) []string {
-	return strings.Split(src, "_")
+	return strings.Split(strings.ToLower(src), "_")
 }
 
-// if more than three consecutive upper letters, use letters 0..n-1 as a word
-// eg. ThisIsHTMLForYou -> [this, is, html, for, you]
-func splitByCapitals(src string) []string {
-	// TODO: IMPLEMENT
-	return []string{src}
+func splitByCapitals(src string) ([]string, error) {
+	var res []string
+	buf := bytes.NewBuffer(make([]byte, 0, 100))
+	for _, rune := range src {
+		switch true {
+		case unicode.IsLower(rune):
+			buf.Write([]byte(string(rune)))
+		case unicode.IsUpper(rune):
+			if len(buf.String()) > 0 {
+				res = append(res, buf.String())
+				buf.Reset()
+			}
+			buf.Write([]byte(string(unicode.ToLower(rune))))
+		default:
+			return nil, fmt.Errorf("Unexpected letter: %v", string(rune))
+		}
+	}
+	res = append(res, buf.String())
+	return res, nil
 }
 
+// CAVEAT: also leaves in underscores for later parsing
 func removeNonAlphabets(src string) (string, error) {
-	reg, err := regexp.Compile("[^a-zA-Z]+")
+	reg, err := regexp.Compile("[^a-zA-Z_]+")
 	if err != nil {
 		return "", err
 	}
