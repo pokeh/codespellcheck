@@ -115,7 +115,6 @@ func TestSplitByCapitals(t *testing.T) {
 }
 
 func TestRemoveNonAlphabets(t *testing.T) {
-
 	var tests = []struct {
 		subject  string
 		src      string
