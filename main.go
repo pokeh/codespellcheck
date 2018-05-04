@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 	"unicode"
 )
@@ -16,7 +15,6 @@ func main() {
 	path := os.Args[1]
 	if !isFile(path) {
 		log.Fatal("Given path is not a file.")
-		return
 	}
 	file, err := os.Open(path)
 	if err != nil {
@@ -29,15 +27,7 @@ func main() {
 
 	for scanner.Scan() {
 		text := scanner.Text()
-		text, err = removeNonAlphabets(text)
-		if err != nil {
-			log.Fatal(err)
-		}
-		words, err := splitWords(text)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, word := range words {
+		for _, word := range splitWords(text) {
 			// skip shorter words to avoid abbreviations
 			if len(word) < 5 {
 				continue
@@ -57,50 +47,75 @@ func isFile(path string) bool {
 	return !fileInfo.IsDir()
 }
 
-func splitWords(src string) ([]string, error) {
-	if strings.Contains(src, "_") {
-		return splitByUnderscore(src), nil
-	} else {
-		text, err := splitByCapitals(src)
-		if err != nil {
-			return nil, err
+func splitWords(src string) []string {
+	cap := len([]byte(src))
+	alphabets := splitByNonalphabets(cap, src)
+
+	res := make([]string, 0, len(src))
+	for _, a := range alphabets {
+		for _, word := range splitByCapitals(cap, a) {
+			res = append(res, word)
 		}
-		return text, nil
 	}
+	return res
 }
 
-func splitByUnderscore(src string) []string {
-	return strings.Split(strings.ToLower(src), "_")
-}
-
-func splitByCapitals(src string) ([]string, error) {
-	var res []string
-	buf := bytes.NewBuffer(make([]byte, 0, 100))
+func splitByNonalphabets(cap int, src string) []string {
+	res := make([]string, 0, len(src))
+	buf := bytes.NewBuffer(make([]byte, 0, cap))
 	for _, rune := range src {
-		switch true {
-		case unicode.IsLower(rune):
+		if unicode.IsLower(rune) || unicode.IsUpper(rune) {
 			buf.Write([]byte(string(rune)))
-		case unicode.IsUpper(rune):
-			if len(buf.String()) > 0 {
+		} else if len(buf.String()) > 0 {
+			res = append(res, buf.String())
+			buf.Reset()
+		}
+	}
+	if len(buf.String()) > 0 {
+		res = append(res, buf.String())
+		buf.Reset()
+	}
+	return res
+}
+
+// TODO: refactor
+func splitByCapitals(cap int, src string) []string {
+	res := make([]string, 0, len(src))
+	buf := bytes.NewBuffer(make([]byte, 0, cap))
+	cs := make([]rune, 0, len(src))
+	for _, r := range src {
+		if unicode.IsUpper(r) {
+			if len(cs) == 0 && len(buf.String()) > 0 {
 				res = append(res, buf.String())
 				buf.Reset()
 			}
-			buf.Write([]byte(string(unicode.ToLower(rune))))
-		default:
-			return nil, fmt.Errorf("Unexpected letter: %v", string(rune))
+			lower := []rune(strings.ToLower(string(r)))[0]
+			cs = append(cs, lower)
+		} else if unicode.IsLower(r) {
+			if len(cs) > 0 {
+				for _, c := range cs[:len(cs)-1] {
+					res = append(res, string(c))
+				}
+				lastC := string(cs[len(cs)-1])
+				buf.Write([]byte(lastC))
+				cs = cs[:0]
+			}
+			buf.Write([]byte(string(r)))
 		}
 	}
-	res = append(res, buf.String())
-	return res, nil
-}
-
-// note: also leaves in underscores for later parsing
-func removeNonAlphabets(src string) (string, error) {
-	reg, err := regexp.Compile("[^a-zA-Z_]+")
-	if err != nil {
-		return "", err
+	if len(cs) > 0 {
+		for _, c := range cs[:len(cs)-1] {
+			res = append(res, string(c))
+		}
+		lastC := string(cs[len(cs)-1])
+		buf.Write([]byte(lastC))
+		cs = cs[:0]
 	}
-	return reg.ReplaceAllString(src, ""), nil
+	if len(buf.String()) > 0 {
+		res = append(res, buf.String())
+		buf.Reset()
+	}
+	return res
 }
 
 // note: we assume irregular plurals are in the dictionary

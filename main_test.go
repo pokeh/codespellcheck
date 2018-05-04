@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -27,27 +28,27 @@ func TestIsFile(t *testing.T) {
 
 func TestSplitWords(t *testing.T) {
 	var tests = []struct {
-		subject       string
-		src           string
-		expected      []string
-		errorExpected bool
+		subject  string
+		src      string
+		expected []string
 	}{
-		{"snake case", "test_string", []string{"test", "string"}, false},
-		{"constants", "TEST_STRING", []string{"test", "string"}, false},
-		{"pascal case", "TestString", []string{"test", "string"}, false},
-		{"camel case", "testString", []string{"test", "string"}, false},
-		{"error with numbers", "testString1", nil, true},
-		{"error with symbols", "testString%#$~", nil, true},
+		{"snake case", "test_string", []string{"test", "string"}},
+		{"pascal case", "TestString", []string{"test", "string"}},
+		{"camel case", "testString", []string{"test", "string"}},
+		{"with numbers", "test_string_01", []string{"test", "string"}},
+		{"with symbols", "test(string)", []string{"test", "string"}},
+		{"with nonalphabets", "testがStringで", []string{"test", "string"}},
+		// highly probable that these words are abbreviations
+		{"with capitalized words", "TESTString", []string{"t", "e", "s", "t", "string"}},
+		// fix me (though, how do we differentiate the abbreviations?)
+		{"only capitalized words", "TEST_STRING", []string{"t", "e", "s", "t", "s", "t", "r", "i", "n", "g"}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.subject, func(t *testing.T) {
-			actual, err := splitWords(tt.src)
-			if tt.errorExpected && err == nil {
-				t.Errorf("Expected error but did not receive one.")
-			}
-			if !tt.errorExpected && err != nil {
-				t.Errorf("Expected no errors but received: %v", err.Error())
+			actual := splitWords(tt.src)
+			if len(actual) != len(tt.expected) {
+				t.Errorf("Expected %v but got %v.", tt.expected, actual)
 			}
 			for i, e := range tt.expected {
 				if actual[i] != e {
@@ -58,20 +59,25 @@ func TestSplitWords(t *testing.T) {
 	}
 }
 
-func TestSplitByUnderscore(t *testing.T) {
+func TestSplitByNonalphabets(t *testing.T) {
 	var tests = []struct {
 		subject  string
 		src      string
 		expected []string
 	}{
-		{"multiple words", "test_string", []string{"test", "string"}},
-		{"capitals", "TEST_STRING", []string{"test", "string"}},
-		{"empty string", "", []string{""}},
+		{"with underscore", "test_string", []string{"test", "string"}},
+		{"with symbols", "test(string)", []string{"test", "string"}},
+		{"with nonalphabets", "testがstringよ", []string{"test", "string"}},
+		{"empty string", "", nil},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.subject, func(t *testing.T) {
-			actual := splitByUnderscore(tt.src)
+			fmt.Println(tt.subject)
+			actual := splitByNonalphabets(len([]byte(tt.src)), tt.src)
+			if len(actual) != len(tt.expected) {
+				t.Errorf("Expected %v but got %v.", tt.expected, actual)
+			}
 			for i, e := range tt.expected {
 				if actual[i] != e {
 					t.Errorf("Expected %v but got %v.", e, actual[i])
@@ -83,58 +89,30 @@ func TestSplitByUnderscore(t *testing.T) {
 
 func TestSplitByCapitals(t *testing.T) {
 	var tests = []struct {
-		subject       string
-		src           string
-		expected      []string
-		errorExpected bool
+		subject  string
+		src      string
+		expected []string
 	}{
-		{"camel case", "testString", []string{"test", "string"}, false},
-		{"pascal case", "TestString", []string{"test", "string"}, false},
-		{"single word", "test", []string{"test"}, false},
-		{"capitals", "TEST", []string{"t", "e", "s", "t"}, false},
-		{"empty string", "", []string{""}, false},
-		{"error with symbols", "testString%#$~", nil, true},
+		{"single word", "test", []string{"test"}},
+		{"camel case", "testString", []string{"test", "string"}},
+		{"pascal case", "TestString", []string{"test", "string"}},
+		{"capitals", "TEST", []string{"t", "e", "s", "t"}},
+		{"partly capitals", "TESTString", []string{"t", "e", "s", "t", "string"}},
+		{"partly capitals 2", "TESTStringGO", []string{"t", "e", "s", "t", "string", "g", "o"}},
+		{"partly capitals 3", "testSTRINGGo", []string{"test", "s", "t", "r", "i", "n", "g", "go"}},
+		{"empty string", "", nil},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.subject, func(t *testing.T) {
-			actual, err := splitByCapitals(tt.src)
-			if tt.errorExpected && err == nil {
-				t.Errorf("Expected error but did not receive one.")
-			}
-			if !tt.errorExpected && err != nil {
-				t.Errorf("Expected no errors but received: %v", err.Error())
+			actual := splitByCapitals(len([]byte(tt.src)), tt.src)
+			if len(actual) != len(tt.expected) {
+				t.Errorf("Expected %v but got %v.", tt.expected, actual)
 			}
 			for i, e := range tt.expected {
 				if actual[i] != e {
 					t.Errorf("Expected %v but got %v.", e, actual[i])
 				}
-			}
-		})
-	}
-}
-
-func TestRemoveNonAlphabets(t *testing.T) {
-	var tests = []struct {
-		subject  string
-		src      string
-		expected string
-	}{
-		{"only alphabets", "testString", "testString"},
-		{"with underscore", "test_string", "test_string"},
-		{"with numbers", "testString01", "testString"},
-		{"with symbols", "testString!", "testString"},
-		{"empty string", "", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.subject, func(t *testing.T) {
-			actual, err := removeNonAlphabets(tt.src)
-			if err != nil {
-				t.Errorf("Expected no errors but received: %v", err.Error())
-			}
-			if actual != tt.expected {
-				t.Errorf("Expected %v but got %v.", tt.expected, actual)
 			}
 		})
 	}
