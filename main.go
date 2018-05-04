@@ -42,8 +42,7 @@ func main() {
 			if len(word) < 5 {
 				continue
 			}
-			_, err := exec.Command("look", word).Output()
-			if err != nil {
+			if !isInDictionary(word) {
 				fmt.Printf("Check \"%v\".\n", word)
 			}
 		}
@@ -95,11 +94,50 @@ func splitByCapitals(src string) ([]string, error) {
 	return res, nil
 }
 
-// CAVEAT: also leaves in underscores for later parsing
+// note: also leaves in underscores for later parsing
 func removeNonAlphabets(src string) (string, error) {
 	reg, err := regexp.Compile("[^a-zA-Z_]+")
 	if err != nil {
 		return "", err
 	}
 	return reg.ReplaceAllString(src, ""), nil
+}
+
+// note: we assume irregular plurals are in the dictionary
+func isInDictionary(word string) bool {
+	// check singular
+	if checkByLook(word) {
+		return true
+	}
+	// check plurals that end with s
+	if word[len(word)-1:] == "s" {
+		try := strings.TrimRight(word, "s")
+		if checkByLook(try) {
+			return true
+		}
+	}
+	// check plurals that end with es
+	if word[len(word)-2:] == "es" {
+		try := strings.TrimRight(word, "es")
+		if checkByLook(try) {
+			return true
+		}
+	}
+	// check past tense verbs
+	if word[len(word)-2:] == "ed" {
+		try := strings.TrimRight(word, "ed")
+		if checkByLook(try) {
+			return true
+		}
+		try = strings.TrimRight(word, "d")
+		if checkByLook(try) {
+			return true
+		}
+	}
+	return false
+}
+
+func checkByLook(word string) bool {
+	_, err := exec.Command("look", word).Output()
+	return err == nil
 }

@@ -139,3 +139,45 @@ func TestRemoveNonAlphabets(t *testing.T) {
 		})
 	}
 }
+
+func TestIsInDictionary(t *testing.T) {
+	var tests = []struct {
+		subject  string
+		word     string
+		expected bool
+	}{
+		{"singular", "rain", true},
+		{"plural with s", "grapefruits", true},
+		{"plural with es", "passes", true},
+		{"past tense verbs", "twirled", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.subject, func(t *testing.T) {
+			actual := isInDictionary(tt.word)
+			if actual != tt.expected {
+				t.Errorf("Expected %v but got %v: %v", tt.expected, actual, tt.word)
+			}
+		})
+	}
+}
+
+func TestcheckByLook(t *testing.T) {
+	var tests = []struct {
+		subject  string
+		word     string
+		expected bool
+	}{
+		{"existing word", "erinaceous", false},
+		{"non-existing word", "hedgehogious", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.subject, func(t *testing.T) {
+			actual := checkByLook(tt.word)
+			if actual != tt.expected {
+				t.Errorf("Expected %v but got %v: %v", tt.expected, actual, tt.word)
+			}
+		})
+	}
+}
