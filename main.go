@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -48,72 +47,67 @@ func isFile(path string) bool {
 }
 
 func splitWords(src string) []string {
-	cap := len([]byte(src))
-	alphabets := splitByNonalphabets(cap, src)
+	alphabets := splitByNonalphabets(src)
 
 	res := make([]string, 0, len(src))
 	for _, a := range alphabets {
-		for _, word := range splitByCapitals(cap, a) {
+		for _, word := range splitByUppercase(a) {
 			res = append(res, word)
 		}
 	}
 	return res
 }
 
-func splitByNonalphabets(cap int, src string) []string {
+func splitByNonalphabets(src string) []string {
 	res := make([]string, 0, len(src))
-	buf := bytes.NewBuffer(make([]byte, 0, cap))
-	for _, rune := range src {
-		if unicode.IsLower(rune) || unicode.IsUpper(rune) {
-			buf.Write([]byte(string(rune)))
-		} else if len(buf.String()) > 0 {
-			res = append(res, buf.String())
-			buf.Reset()
+	word := make([]rune, 0, len(src))
+	for _, r := range src {
+		if unicode.IsLower(r) || unicode.IsUpper(r) {
+			word = append(word, r)
+		} else if len(word) > 0 {
+			res = append(res, string(word))
+			word = make([]rune, 0, len(src))
 		}
 	}
-	if len(buf.String()) > 0 {
-		res = append(res, buf.String())
-		buf.Reset()
+	if len(word) > 0 {
+		res = append(res, string(word))
 	}
 	return res
 }
 
-// TODO: refactor
-func splitByCapitals(cap int, src string) []string {
+func splitByUppercase(src string) []string {
 	res := make([]string, 0, len(src))
-	buf := bytes.NewBuffer(make([]byte, 0, cap))
-	cs := make([]rune, 0, len(src))
+	word := make([]rune, 0, len(src))
+	uppers := make([]string, 0, len(src))
 	for _, r := range src {
 		if unicode.IsUpper(r) {
-			if len(cs) == 0 && len(buf.String()) > 0 {
-				res = append(res, buf.String())
-				buf.Reset()
+			if len(uppers) == 0 && len(word) > 0 {
+				res = append(res, string(word))
+				word = make([]rune, 0, len(src))
 			}
-			lower := []rune(strings.ToLower(string(r)))[0]
-			cs = append(cs, lower)
+			uppers = append(uppers, strings.ToLower(string(r)))
 		} else if unicode.IsLower(r) {
-			if len(cs) > 0 {
-				for _, c := range cs[:len(cs)-1] {
-					res = append(res, string(c))
+			if len(uppers) > 0 {
+				for _, u := range uppers[:len(uppers)-1] {
+					res = append(res, string(u))
 				}
-				lastC := string(cs[len(cs)-1])
-				buf.Write([]byte(lastC))
-				cs = cs[:0]
+				lastU := []rune(uppers[len(uppers)-1])
+				word = append(word, []rune(lastU)[0])
+				uppers = make([]string, 0, len(src))
 			}
-			buf.Write([]byte(string(r)))
+			word = append(word, r)
 		}
 	}
-	if len(cs) > 0 {
-		for _, c := range cs[:len(cs)-1] {
-			res = append(res, string(c))
+	if len(uppers) > 0 {
+		for _, u := range uppers[:len(uppers)-1] {
+			res = append(res, string(u))
 		}
-		lastC := string(cs[len(cs)-1])
-		buf.Write([]byte(lastC))
-		cs = cs[:0]
+		lastU := uppers[len(uppers)-1]
+		word = append(word, []rune(lastU)[0])
+		uppers = make([]string, 0, len(src))
 	}
-	if len(buf.String()) > 0 {
-		res = append(res, buf.String())
-		buf.Reset()
+	if len(word) > 0 {
+		res = append(res, string(word))
 	}
 	return res
 }

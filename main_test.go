@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -73,8 +72,7 @@ func TestSplitByNonalphabets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.subject, func(t *testing.T) {
-			fmt.Println(tt.subject)
-			actual := splitByNonalphabets(len([]byte(tt.src)), tt.src)
+			actual := splitByNonalphabets(tt.src)
 			if len(actual) != len(tt.expected) {
 				t.Errorf("Expected %v but got %v.", tt.expected, actual)
 			}
@@ -87,7 +85,7 @@ func TestSplitByNonalphabets(t *testing.T) {
 	}
 }
 
-func TestSplitByCapitals(t *testing.T) {
+func TestSplitByUppercase(t *testing.T) {
 	var tests = []struct {
 		subject  string
 		src      string
@@ -105,7 +103,7 @@ func TestSplitByCapitals(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.subject, func(t *testing.T) {
-			actual := splitByCapitals(len([]byte(tt.src)), tt.src)
+			actual := splitByUppercase(tt.src)
 			if len(actual) != len(tt.expected) {
 				t.Errorf("Expected %v but got %v.", tt.expected, actual)
 			}
