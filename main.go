@@ -6,27 +6,58 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"unicode"
 )
 
 func main() {
-	path := os.Args[1]
-	if !isFile(path) {
-		log.Fatal("Given path is not a file.")
-	}
-	file, err := os.Open(path)
+	paths, err := getFilePaths(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
+	for _, path := range paths {
+		if check(path) != nil {
+			log.Fatal(err)
+		}
+	}
+}
 
-	scanner := bufio.NewScanner(file)
+func getFilePaths(path string) ([]string, error) {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if fileInfo.IsDir() {
+		paths := make([]string, 0, 10)
+		err := filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				paths = append(paths, p)
+			}
+			return nil
+		})
+		return paths, err
+	} else {
+		return []string{path}, nil
+	}
+}
+
+func check(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
 	scanner.Split(bufio.ScanWords)
 
 	for scanner.Scan() {
-		text := scanner.Text()
-		for _, word := range splitWords(text) {
+		t := scanner.Text()
+		for _, word := range splitWords(t) {
 			// skip shorter words to avoid abbreviations
 			if len(word) < 5 {
 				continue
@@ -36,14 +67,8 @@ func main() {
 			}
 		}
 	}
-}
 
-func isFile(path string) bool {
-	fileInfo, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return !fileInfo.IsDir()
+	return nil
 }
 
 func splitWords(src string) []string {

@@ -6,20 +6,32 @@ import (
 
 func TestIsFile(t *testing.T) {
 	var tests = []struct {
-		subject  string
-		path     string
-		expected bool
+		subject     string
+		path        string
+		expected    []string
+		errExpected bool
 	}{
-		{"file exists", "test/test_file.go", true},
-		{"file doesn't exist", "test/test_file_2.go", false},
-		{"path is a directory", "test", false},
+		{"path is a file", "test/test_file.go", []string{"test/test_file.go"}, false},
+		{"path is a directory", "test", []string{"test/test_file.go", "test/test_file_2.go"}, false},
+		{"path doesn't exist", "test/test_file_gazillion.go", nil, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.subject, func(t *testing.T) {
-			actual := isFile(tt.path)
-			if actual != tt.expected {
+			actual, err := getFilePaths(tt.path)
+			if err == nil && tt.errExpected {
+				t.Errorf("Expected error but did not receive any.")
+			}
+			if err != nil && !tt.errExpected {
+				t.Errorf("Did not expect error but received: %v.", err.Error())
+			}
+			if len(actual) != len(tt.expected) {
 				t.Errorf("Expected %v but got %v.", tt.expected, actual)
+			}
+			for i, e := range tt.expected {
+				if actual[i] != e {
+					t.Errorf("Expected %v but got %v.", e, actual[i])
+				}
 			}
 		})
 	}
