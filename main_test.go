@@ -152,14 +152,14 @@ func TestIsInDictionary(t *testing.T) {
 	}
 }
 
-func TestcheckByLook(t *testing.T) {
+func TestCheckByLook(t *testing.T) {
 	var tests = []struct {
 		subject  string
 		word     string
 		expected bool
 	}{
-		{"existing word", "erinaceous", false},
-		{"non-existing word", "hedgehogious", true},
+		{"existing word", "erinaceous", true},
+		{"non-existing word", "hedgehogious", false},
 	}
 
 	for _, tt := range tests {
