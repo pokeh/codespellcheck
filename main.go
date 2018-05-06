@@ -114,26 +114,30 @@ func splitByUppercase(src string) []string {
 
 // note: we assume irregular plurals are in the dictionary
 func isInDictionary(word string) bool {
-	// check singular
 	if checkByLook(word) {
 		return true
 	}
-	// check plurals that end with s
-	if word[len(word)-1:] == "s" {
+	if strings.HasSuffix(word, "s") {
 		try := strings.TrimRight(word, "s")
 		if checkByLook(try) {
 			return true
 		}
 	}
-	// check plurals that end with es
-	if word[len(word)-2:] == "es" {
+	if strings.HasSuffix(word, "es") {
 		try := strings.TrimRight(word, "es")
 		if checkByLook(try) {
 			return true
 		}
 	}
+	if strings.HasSuffix(word, "ies") {
+		try := strings.TrimRight(word, "ies")
+		try = try + "y"
+		if checkByLook(try) {
+			return true
+		}
+	}
 	// check past tense verbs
-	if word[len(word)-2:] == "ed" {
+	if strings.HasSuffix(word, "ed") {
 		try := strings.TrimRight(word, "ed")
 		if checkByLook(try) {
 			return true
@@ -147,6 +151,10 @@ func isInDictionary(word string) bool {
 }
 
 func checkByLook(word string) bool {
-	_, err := exec.Command("look", word).Output()
-	return err == nil
+	o, err := exec.Command("look", word).Output()
+	if err != nil {
+		return false
+	}
+	s := strings.ToLower(strings.Split(string(o), "\n")[0])
+	return s == word
 }

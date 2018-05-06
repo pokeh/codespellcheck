@@ -125,7 +125,9 @@ func TestIsInDictionary(t *testing.T) {
 		{"singular", "rain", true},
 		{"plural with s", "grapefruits", true},
 		{"plural with es", "passes", true},
-		{"past tense verbs", "twirled", true},
+		{"plural with ies", "cherries", true},
+		{"past tense with ed", "twirled", true},
+		{"past tense with d", "circled", true},
 	}
 
 	for _, tt := range tests {
